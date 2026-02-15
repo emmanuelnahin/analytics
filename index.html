@@ -1,0 +1,2305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Luxanalitica · Business & People Analytics · Dashboard Interactivo</title>
+    
+    <!-- Core Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Tailwind + Inter + Font Awesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0b1120;
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        
+        /* Glassmorphism + efectos premium */
+        .glass-premium {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .gradient-border {
+            position: relative;
+            border-radius: 2rem;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+        }
+        
+        .gradient-border::before {
+            content: '';
+            position: absolute;
+            top: -1px; left: -1px; right: -1px; bottom: -1px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899, #3b82f6);
+            border-radius: 2.1rem;
+            z-index: -1;
+            opacity: 0.3;
+            animation: borderRotate 6s linear infinite;
+        }
+        
+        @keyframes borderRotate {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        
+        .stat-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 30px 60px -15px rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Scrollbar personalizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        
+        /* Animaciones */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .float-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .pulse-glow {
+            animation: pulseGlow 2s infinite;
+        }
+        
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.5); }
+        }
+        
+        /* Tooltips personalizados */
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+        
+        [data-tooltip]:before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 8px 12px;
+            background: #1e293b;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 8px;
+            white-space: nowrap;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 25px -5px black;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+        
+        [data-tooltip]:hover:before {
+            opacity: 1;
+        }
+        
+        /* Estilos para tabla de inconsistencias */
+        .inconsistency-row {
+            transition: all 0.2s;
+        }
+        
+        .inconsistency-row:hover {
+            background: rgba(59, 130, 246, 0.1) !important;
+        }
+        
+        .badge-critical {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .badge-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .badge-info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        /* Loading spinner */
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(59, 130, 246, 0.1);
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Grid responsivo */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        /* Ocultar elementos por defecto */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Estilo para el botón de ejemplo mejorado */
+        .btn-example {
+            background: linear-gradient(135deg, #10b981, #059669);
+            transition: all 0.3s ease;
+        }
+        .btn-example:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.4);
+        }
+        
+        /* Nuevos estilos para datos de negocio */
+        .business-section {
+            border-left: 4px solid #8b5cf6;
+        }
+        
+        .salary-highlight {
+            color: #10b981;
+            font-weight: 700;
+        }
+        
+        .salary-warning {
+            color: #f59e0b;
+            font-weight: 700;
+        }
+        
+        /* Switch para ocultar datos sensibles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 26px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #475569;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        /* Tooltip de simulación */
+        .simulation-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #10b981;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 700;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Estilos para tabla editable */
+        .editable-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 1rem;
+            border: 1px solid #334155;
+        }
+        
+        .editable-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        
+        .editable-table th {
+            background: #1e293b;
+            color: #94a3b8;
+            font-weight: 600;
+            padding: 10px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .editable-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #334155;
+            color: #e2e8f0;
+        }
+        
+        .editable-table tr:hover td {
+            background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .editable-table td[contenteditable="true"] {
+            cursor: text;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .editable-table td[contenteditable="true"]:focus {
+            outline: 2px solid #3b82f6;
+            background: #1e293b;
+        }
+        
+        /* Search and filter bar */
+        .search-bar {
+            background: #1e293b;
+            border-radius: 2rem;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .search-bar input {
+            background: transparent;
+            border: none;
+            color: white;
+            width: 100%;
+            outline: none;
+        }
+        
+        .filter-pill {
+            background: #334155;
+            padding: 0.25rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .filter-pill.active {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        /* Radar chart container */
+        .radar-container {
+            height: 250px;
+            width: 100%;
+        }
+        
+        /* Health indicators */
+        .health-led {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .health-green { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .health-yellow { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+        .health-red { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+    <!-- Contenedor principal -->
+    <div class="max-w-[1600px] mx-auto">
+        
+        <!-- Header con navegación y estado -->
+        <div class="glass-premium rounded-3xl p-4 md:p-6 mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center text-white text-xl">
+                    <i class="fas fa-chart-pie"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-black text-white tracking-tight">
+                        Business & People <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Analytics 360°</span>
+                    </h1>
+                    <p class="text-slate-400 text-sm flex items-center gap-2">
+                        <i class="fas fa-shield-alt text-emerald-400"></i>
+                        Procesamiento 100% local · Edición en vivo · Simulación predictiva
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- Switch para ocultar datos sensibles -->
+                <div class="flex items-center gap-3 px-4 py-2 bg-slate-800 rounded-2xl">
+                    <span class="text-xs text-slate-400">
+                        <i class="fas fa-eye-slash"></i>
+                    </span>
+                    <label class="switch">
+                        <input type="checkbox" id="hideSensitiveData">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="text-xs text-slate-400">
+                        <i class="fas fa-eye"></i>
+                    </span>
+                </div>
+                
+                <div class="px-4 py-2 bg-slate-800 rounded-2xl text-sm font-semibold text-slate-300 flex items-center gap-2">
+                    <i class="fas fa-database text-blue-400"></i>
+                    <span id="dataStatus">Sin datos cargados</span>
+                </div>
+                <button id="resetBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-2xl text-sm font-semibold text-white transition-all flex items-center gap-2">
+                    <i class="fas fa-redo"></i>
+                    Reiniciar
+                </button>
+            </div>
+        </div>
+
+        <!-- 🔒 BANNER DE PRIVACIDAD - NUEVO (amigable y educativo) -->
+        <div class="bg-blue-900/20 border border-blue-500/30 rounded-2xl p-4 mb-6 text-sm flex flex-wrap items-center gap-3 backdrop-blur-sm">
+            <div class="flex-shrink-0 w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="flex-1 text-slate-300">
+                <span class="font-semibold text-white">Privacidad total:</span> Todos los datos se procesan 
+                <span class="text-emerald-400 font-medium">exclusivamente en tu navegador</span>. 
+                Puedes abrir las herramientas de desarrollador 
+                <kbd class="px-1.5 py-0.5 bg-slate-700 rounded text-xs font-mono">F12</kbd> 
+                y hacer clic en la pestaña <span class="font-mono text-xs bg-slate-800 px-2 py-1 rounded">Network</span> 
+                para comprobar que <span class="underline decoration-wavy decoration-blue-400">no se envía información a ningún servidor</span>. 
+                Si prefieres usar datos ficticios, haz clic en el botón <span class="bg-purple-600/30 text-purple-300 px-2 py-1 rounded-full text-xs font-bold">Simular</span> 
+                y obtendrás un conjunto de ejemplo con inconsistencias controladas. ¡Tú decides!
+            </div>
+            <div class="flex-shrink-0 text-xs text-slate-500 flex items-center gap-1">
+                <i class="fas fa-check-circle text-emerald-400"></i> 100% local
+            </div>
+        </div>
+
+        <!-- Grid principal: Upload + Dashboard + Nuevas secciones -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Columna izquierda: Carga de datos, inconsistencias y nuevos filtros -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Tarjeta de carga -->
+                <div class="glass-card rounded-3xl p-6">
+                    <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fas fa-cloud-upload-alt text-blue-400"></i>
+                        Cargar datos maestros
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <!-- Drop zone -->
+                        <div id="dropZone" class="border-2 border-dashed border-slate-700 rounded-2xl p-8 text-center hover:border-blue-500/50 transition-all cursor-pointer group relative">
+                            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" class="hidden">
+                            <i class="fas fa-file-excel text-5xl text-slate-600 group-hover:text-blue-400 transition-colors mb-3"></i>
+                            <p class="text-slate-400 text-sm mb-2">Arrastra tu archivo Excel o haz clic</p>
+                            <p class="text-xs text-slate-600">Formatos: .xlsx, .xls, .csv</p>
+                            <p id="fileName" class="text-xs text-blue-400 mt-3 hidden"></p>
+                        </div>
+                        
+                        <!-- Botones de acción -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <button id="simulateBtn" class="py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-white font-bold text-xs hover:from-purple-700 hover:to-pink-700 transition-all flex items-center justify-center gap-1 relative" data-tooltip="Carga 500 empleados + datos de negocio CON INCONSISTENCIAS DE EJEMPLO">
+                                <i class="fas fa-magic"></i>
+                                <span class="hidden sm:inline">Simular</span>
+                                <span class="simulation-badge hidden" id="simulationBadge">Demo</span>
+                            </button>
+                            <button id="analyzeBtn" class="py-3 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl text-white font-bold text-xs hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed" disabled data-tooltip="Procesar datos cargados">
+                                <i class="fas fa-chart-line"></i>
+                                <span class="hidden sm:inline">Analizar</span>
+                            </button>
+                            <button id="exampleExcelBtn" class="py-3 btn-example rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1" data-tooltip="Descarga un Excel de ejemplo con datos de negocio y personas">
+                                <i class="fas fa-file-excel"></i>
+                                <span class="hidden sm:inline">Ejemplo</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Descargar plantilla -->
+                        <button id="downloadTemplateBtn" class="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm text-slate-300 transition-all flex items-center justify-center gap-2">
+                            <i class="fas fa-download"></i>
+                            Descargar plantilla Excel
+                        </button>
+                    </div>
+                    
+                    <!-- Estructura esperada (acordeón) -->
+                    <div class="mt-6">
+                        <button id="toggleStructureBtn" class="w-full flex items-center justify-between text-sm text-slate-400 hover:text-white transition-colors">
+                            <span class="flex items-center gap-2">
+                                <i class="fas fa-info-circle"></i>
+                                Estructura esperada
+                            </span>
+                            <i class="fas fa-chevron-down" id="structureChevron"></i>
+                        </button>
+                        <div id="structureContent" class="mt-3 text-xs text-slate-500 space-y-1 hidden">
+                            <p class="text-emerald-400 font-semibold mt-2">📊 DATOS DE PERSONAS:</p>
+                            <p>• <span class="text-blue-400">identifier</span> (ID único)</p>
+                            <p>• <span class="text-blue-400">full_name</span> (nombre completo)</p>
+                            <p>• <span class="text-blue-400">email</span> (corporativo)</p>
+                            <p>• <span class="text-blue-400">department</span> (área)</p>
+                            <p>• <span class="text-blue-400">position</span> (cargo)</p>
+                            <p>• <span class="text-blue-400">manager_id</span> (jefe directo)</p>
+                            <p>• <span class="text-blue-400">hire_date</span> (fecha ingreso)</p>
+                            <p>• <span class="text-blue-400">birth_date</span> (fecha nacimiento)</p>
+                            <p>• <span class="text-blue-400">gender</span> (M/F)</p>
+                            <p>• <span class="text-blue-400">status</span> (activo/baja)</p>
+                            
+                            <p class="text-purple-400 font-semibold mt-3">💰 DATOS DE NEGOCIO (nuevo):</p>
+                            <p>• <span class="text-blue-400">salary</span> (salario mensual)</p>
+                            <p>• <span class="text-blue-400">monthly_billing</span> (facturación mensual que genera)</p>
+                            <p>• <span class="text-blue-400">monthly_cost</span> (costo mensual para la empresa)</p>
+                            <p>• <span class="text-blue-400">workload_hours</span> (horas de carga laboral)</p>
+                            <p>• <span class="text-blue-400">performance_score</span> (1-100)</p>
+                            <p>• <span class="text-blue-400">star_potential</span> (S/N - potencial estrella)</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Panel de inconsistencias detectadas -->
+                <div class="glass-card rounded-3xl p-6" id="inconsistenciesPanel">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fas fa-exclamation-triangle text-amber-400"></i>
+                            Inconsistencias
+                        </h2>
+                        <span id="inconsistenciesCount" class="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs font-bold">0</span>
+                    </div>
+                    
+                    <div class="max-h-[300px] overflow-y-auto space-y-2" id="inconsistenciesList">
+                        <div class="text-center text-slate-600 py-8">
+                            <i class="fas fa-check-circle text-4xl mb-3 text-emerald-500/30"></i>
+                            <p class="text-sm">No hay inconsistencias detectadas</p>
+                        </div>
+                    </div>
+                    
+                    <button id="downloadInconsistenciesBtn" class="w-full mt-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm text-slate-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fas fa-download"></i>
+                        Exportar inconsistencias
+                    </button>
+                </div>
+                
+                <!-- NUEVO: Filtros rápidos y búsqueda -->
+                <div class="glass-card rounded-3xl p-6">
+                    <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <i class="fas fa-filter text-green-400"></i>
+                        Filtros y búsqueda
+                    </h2>
+                    <div class="space-y-4">
+                        <div class="search-bar">
+                            <i class="fas fa-search text-slate-400"></i>
+                            <input type="text" id="searchInput" placeholder="Buscar por nombre, ID, email o departamento...">
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="filter-pill active" data-filter="all">Todos</span>
+                            <span class="filter-pill" data-filter="activo">Activos</span>
+                            <span class="filter-pill" data-filter="baja">Bajas</span>
+                        </div>
+                        <div>
+                            <label class="text-xs text-slate-400">Departamento:</label>
+                            <select id="deptFilter" class="w-full bg-slate-800 rounded-xl p-2 text-sm text-white mt-1">
+                                <option value="all">Todos los departamentos</option>
+                            </select>
+                        </div>
+                        <button id="clearFiltersBtn" class="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-xl text-xs">Limpiar filtros</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Columna derecha: Dashboard principal y nuevas visualizaciones -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- NUEVA BARRA DE HERRAMIENTAS: Simulador de incremento y selector de persona -->
+                <div class="glass-card rounded-3xl p-5 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <i class="fas fa-sliders-h text-blue-400"></i>
+                        <span class="text-sm text-slate-300">Simular incremento salarial:</span>
+                        <input type="range" id="salaryIncreaseSlider" min="0" max="50" value="0" step="1" class="w-40">
+                        <span id="increaseValue" class="text-sm font-bold text-emerald-400">0%</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <i class="fas fa-user text-purple-400"></i>
+                        <select id="personSelector" class="bg-slate-800 rounded-xl p-2 text-sm text-white">
+                            <option value="">Seleccionar persona para comparar</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- NUEVOS INDICADORES DE SALUD -->
+                <div class="grid grid-cols-4 gap-3">
+                    <div class="glass-card rounded-xl p-3 flex items-center gap-2">
+                        <span class="health-led health-green"></span>
+                        <div>
+                            <p class="text-xs text-slate-500">ROI Saludable</p>
+                            <p class="text-sm font-bold" id="healthRoiCount">0</p>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-xl p-3 flex items-center gap-2">
+                        <span class="health-led health-yellow"></span>
+                        <div>
+                            <p class="text-xs text-slate-500">En alerta</p>
+                            <p class="text-sm font-bold" id="healthAlertCount">0</p>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-xl p-3 flex items-center gap-2">
+                        <span class="health-led health-red"></span>
+                        <div>
+                            <p class="text-xs text-slate-500">Críticos</p>
+                            <p class="text-sm font-bold" id="healthCriticalCount">0</p>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-xl p-3">
+                        <p class="text-xs text-slate-500">Brecha género salarial</p>
+                        <p class="text-sm font-bold" id="genderGapPercent">0%</p>
+                    </div>
+                </div>
+                
+                <!-- NUEVA SECCIÓN: KPIs de Negocio (primera fila) -->
+                <div class="glass-card rounded-3xl p-5 business-section">
+                    <h3 class="text-sm font-semibold text-purple-400 mb-4 flex items-center gap-2">
+                        <i class="fas fa-chart-line"></i>
+                        📈 KPIs del Negocio en Vivo
+                    </h3>
+                    
+                    <div class="dashboard-grid">
+                        <div class="stat-card rounded-xl p-4 bg-slate-800/50">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-xs text-slate-500">Facturación Total</p>
+                                    <p class="text-2xl font-black text-white mt-1" id="kpiTotalBilling">$0</p>
+                                    <p class="text-xs text-emerald-400 mt-1" id="kpiAvgBilling">$0 por persona</p>
+                                </div>
+                                <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-400">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card rounded-xl p-4 bg-slate-800/50">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-xs text-slate-500">Masa Salarial</p>
+                                    <p class="text-2xl font-black text-white mt-1" id="kpiTotalSalary">$0</p>
+                                    <p class="text-xs text-amber-400 mt-1" id="kpiAvgSalary">$0 promedio</p>
+                                </div>
+                                <div class="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center text-amber-400">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card rounded-xl p-4 bg-slate-800/50">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-xs text-slate-500">% Nómina / Facturación</p>
+                                    <p class="text-2xl font-black text-white mt-1" id="kpiPayrollPercentage">0%</p>
+                                    <p class="text-xs text-purple-400 mt-1" id="kpiPayrollVsBilling">Ratio salud</p>
+                                </div>
+                                <div class="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center text-purple-400">
+                                    <i class="fas fa-percent"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card rounded-xl p-4 bg-slate-800/50">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-xs text-slate-500">Margen Operativo</p>
+                                    <p class="text-2xl font-black text-white mt-1" id="kpiOperatingMargin">0%</p>
+                                    <p class="text-xs text-blue-400 mt-1" id="kpiProfitPerPerson">$0 por persona</p>
+                                </div>
+                                <div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center text-blue-400">
+                                    <i class="fas fa-coins"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- KPIs de Personas (segunda fila) -->
+                <div class="dashboard-grid">
+                    <div class="glass-card rounded-2xl p-5 stat-card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs text-slate-500 uppercase tracking-wider">Total empleados</p>
+                                <p class="text-3xl font-black text-white mt-1" id="kpiTotalEmployees">0</p>
+                                <p class="text-xs text-emerald-400 mt-1" id="kpiActiveEmployees">0 activos</p>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 text-xl">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card rounded-2xl p-5 stat-card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs text-slate-500 uppercase tracking-wider">Carga laboral</p>
+                                <p class="text-3xl font-black text-white mt-1" id="kpiAvgWorkload">0h</p>
+                                <p class="text-xs text-amber-400 mt-1" id="kpiTotalWorkload">0h totales</p>
+                            </div>
+                            <div class="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-400 text-xl">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card rounded-2xl p-5 stat-card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs text-slate-500 uppercase tracking-wider">Rotación anual</p>
+                                <p class="text-3xl font-black text-white mt-1" id="kpiTurnover">0%</p>
+                                <p class="text-xs text-rose-400 mt-1" id="kpiTurnoverCount">0 bajas</p>
+                            </div>
+                            <div class="w-12 h-12 bg-rose-500/20 rounded-xl flex items-center justify-center text-rose-400 text-xl">
+                                <i class="fas fa-people-arrows"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card rounded-2xl p-5 stat-card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs text-slate-500 uppercase tracking-wider">Rendimiento</p>
+                                <p class="text-3xl font-black text-white mt-1" id="kpiAvgPerformance">0%</p>
+                                <p class="text-xs text-purple-400 mt-1" id="kpiTopPerformers">0 estrellas</p>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400 text-xl">
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gráficos principales (originales) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-venus-mars text-pink-400"></i>
+                            Distribución por género
+                        </h3>
+                        <div class="h-64 relative">
+                            <canvas id="genderChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-building text-blue-400"></i>
+                            Empleados por departamento
+                        </h3>
+                        <div class="h-64 relative">
+                            <canvas id="deptChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Segunda fila de gráficos (originales) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-bar text-emerald-400"></i>
+                            Facturación vs Salario por depto
+                        </h3>
+                        <div class="h-64 relative">
+                            <canvas id="billingVsSalaryChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-line text-amber-400"></i>
+                            Distribución salarial
+                        </h3>
+                        <div class="h-64 relative">
+                            <canvas id="salaryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- NUEVOS GRÁFICOS AVANZADOS -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-chart-scatter text-cyan-400"></i>
+                            Dispersión Salario vs ROI
+                        </h3>
+                        <div class="h-64 relative">
+                            <canvas id="scatterChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-calendar-alt text-indigo-400"></i>
+                            Tendencia de contrataciones
+                        </h3>
+                        <div class="h-64 relative">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-venus-mars text-pink-400"></i>
+                            Brecha salarial por género
+                        </h3>
+                        <div class="h-64 relative">
+                            <canvas id="genderGapChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-birthday-cake text-yellow-400"></i>
+                            Distribución de edades
+                        </h3>
+                        <div class="h-64 relative">
+                            <canvas id="ageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- NUEVO: Radar comparativo y perfil de persona -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-1 glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-id-card text-blue-400"></i>
+                            Perfil de persona
+                        </h3>
+                        <div id="personProfile" class="space-y-2 text-sm">
+                            <p class="text-slate-500">Selecciona una persona</p>
+                        </div>
+                        <div class="mt-4 h-40 radar-container">
+                            <canvas id="radarChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2 glass-card rounded-3xl p-5">
+                        <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-star text-yellow-400"></i>
+                            ⭐ Talento Estrella · Análisis de mejora salarial
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="text-slate-500 text-xs border-b border-slate-700">
+                                        <th class="text-left py-2">Persona</th>
+                                        <th class="text-left py-2">Departamento</th>
+                                        <th class="text-right py-2">Salario actual</th>
+                                        <th class="text-right py-2">Facturación</th>
+                                        <th class="text-right py-2">ROI</th>
+                                        <th class="text-right py-2">Sugerido ↑</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="starsTableBody">
+                                    <tr><td colspan="6" class="text-center text-slate-600 py-8">No hay datos de estrellas</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- NUEVA TABLA EDITABLE EN VIVO -->
+                <div class="glass-card rounded-3xl p-5">
+                    <h3 class="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                        <i class="fas fa-table text-emerald-400"></i>
+                        Editor en vivo (doble clic para editar)
+                    </h3>
+                    <div class="editable-table-container">
+                        <table class="editable-table" id="liveTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Depto</th>
+                                    <th>Salario</th>
+                                    <th>Fact.</th>
+                                    <th>ROI</th>
+                                    <th>Rend.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody">
+                                <!-- Se llena con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Panel de exportación -->
+                <div class="glass-card rounded-3xl p-5">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <h3 class="text-sm font-semibold text-slate-400 flex items-center gap-2">
+                            <i class="fas fa-file-export text-emerald-400"></i>
+                            Exportar análisis completo
+                        </h3>
+                        <div class="flex gap-2">
+                            <button id="exportExcelBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-2 disabled:opacity-50" disabled>
+                                <i class="fas fa-file-excel"></i>
+                                Excel
+                            </button>
+                            <button id="exportJSONBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-2 disabled:opacity-50" disabled>
+                                <i class="fas fa-file-code"></i>
+                                JSON
+                            </button>
+                            <button id="exportBusinessBtn" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 rounded-xl text-xs font-semibold text-white transition-all flex items-center gap-2 disabled:opacity-50" disabled data-tooltip="Exporta solo datos de negocio">
+                                <i class="fas fa-chart-line"></i>
+                                Business
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURACIÓN GLOBAL Y VARIABLES
+        // ============================================
+        // Registrar plugin de datalabels si existe
+        if (typeof ChartDataLabels !== 'undefined') {
+            Chart.register(ChartDataLabels);
+        }
+        
+        let employees = [];
+        let originalData = [];
+        let inconsistencies = [];
+        let charts = {};
+        let isDemoMode = false;
+        let selectedPersonId = null;
+        let currentFilters = { department: 'all', status: 'all', search: '' };
+        let simulationIncrease = 0; // porcentaje de incremento global
+        
+        // Elementos DOM (originales + nuevos)
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const simulateBtn = document.getElementById('simulateBtn');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const exampleExcelBtn = document.getElementById('exampleExcelBtn');
+        const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+        const toggleStructureBtn = document.getElementById('toggleStructureBtn');
+        const structureContent = document.getElementById('structureContent');
+        const structureChevron = document.getElementById('structureChevron');
+        const inconsistenciesCount = document.getElementById('inconsistenciesCount');
+        const inconsistenciesList = document.getElementById('inconsistenciesList');
+        const downloadInconsistenciesBtn = document.getElementById('downloadInconsistenciesBtn');
+        const dataStatus = document.getElementById('dataStatus');
+        const hideSensitiveToggle = document.getElementById('hideSensitiveData');
+        const simulationBadge = document.getElementById('simulationBadge');
+        
+        // KPIs de negocio
+        const kpiTotalBilling = document.getElementById('kpiTotalBilling');
+        const kpiAvgBilling = document.getElementById('kpiAvgBilling');
+        const kpiTotalSalary = document.getElementById('kpiTotalSalary');
+        const kpiAvgSalary = document.getElementById('kpiAvgSalary');
+        const kpiPayrollPercentage = document.getElementById('kpiPayrollPercentage');
+        const kpiPayrollVsBilling = document.getElementById('kpiPayrollVsBilling');
+        const kpiOperatingMargin = document.getElementById('kpiOperatingMargin');
+        const kpiProfitPerPerson = document.getElementById('kpiProfitPerPerson');
+        
+        // KPIs de personas
+        const kpiTotalEmployees = document.getElementById('kpiTotalEmployees');
+        const kpiActiveEmployees = document.getElementById('kpiActiveEmployees');
+        const kpiAvgWorkload = document.getElementById('kpiAvgWorkload');
+        const kpiTotalWorkload = document.getElementById('kpiTotalWorkload');
+        const kpiTurnover = document.getElementById('kpiTurnover');
+        const kpiTurnoverCount = document.getElementById('kpiTurnoverCount');
+        const kpiAvgPerformance = document.getElementById('kpiAvgPerformance');
+        const kpiTopPerformers = document.getElementById('kpiTopPerformers');
+        
+        // Nuevos elementos
+        const searchInput = document.getElementById('searchInput');
+        const deptFilter = document.getElementById('deptFilter');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+        const salaryIncreaseSlider = document.getElementById('salaryIncreaseSlider');
+        const increaseValue = document.getElementById('increaseValue');
+        const personSelector = document.getElementById('personSelector');
+        const tableBody = document.getElementById('tableBody');
+        const personProfile = document.getElementById('personProfile');
+        const healthRoiCount = document.getElementById('healthRoiCount');
+        const healthAlertCount = document.getElementById('healthAlertCount');
+        const healthCriticalCount = document.getElementById('healthCriticalCount');
+        const genderGapPercent = document.getElementById('genderGapPercent');
+        const starsTableBody = document.getElementById('starsTableBody');
+        const topRoiList = document.getElementById('topRoiList');
+        
+        // Botones exportación
+        const exportExcelBtn = document.getElementById('exportExcelBtn');
+        const exportJSONBtn = document.getElementById('exportJSONBtn');
+        const exportBusinessBtn = document.getElementById('exportBusinessBtn');
+        
+        // ============================================
+        // FUNCIONES DE UTILIDAD (originales + nuevas)
+        // ============================================
+        
+        function formatCurrency(value) {
+            if (hideSensitiveToggle && hideSensitiveToggle.checked) return '***';
+            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+        }
+        
+        function formatNumber(value) {
+            if (hideSensitiveToggle && hideSensitiveToggle.checked && value > 0) return '***';
+            return value.toLocaleString();
+        }
+        
+        function parseDate(dateValue) {
+            if (!dateValue) return null;
+            if (dateValue instanceof Date) return dateValue;
+            
+            const str = String(dateValue).trim();
+            // DD/MM/YYYY
+            const match = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+            if (match) {
+                const day = parseInt(match[1]);
+                const month = parseInt(match[2]) - 1;
+                const year = parseInt(match[3]);
+                return new Date(year, month, day);
+            }
+            return null;
+        }
+        
+        function calculateAge(birthDate) {
+            if (!birthDate) return null;
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+            return age;
+        }
+        
+        function calculateTenure(hireDate) {
+            if (!hireDate) return null;
+            const today = new Date();
+            let years = today.getFullYear() - hireDate.getFullYear();
+            const m = today.getMonth() - hireDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < hireDate.getDate())) years--;
+            return years;
+        }
+        
+        // Aplicar incremento salarial simulado a los datos (sin modificar originales permanentemente)
+        function getAdjustedEmployees() {
+            return employees.map(emp => {
+                if (simulationIncrease > 0 && emp.salary > 0) {
+                    return { ...emp, salary: emp.salary * (1 + simulationIncrease / 100) };
+                }
+                return emp;
+            });
+        }
+        
+        // ============================================
+        // GENERAR DATOS DE SIMULACIÓN (CON INCONSISTENCIAS CONTROLADAS)
+        // ============================================
+        
+        function generateSimulationData() {
+            isDemoMode = true;
+            simulationBadge.classList.remove('hidden');
+            
+            const firstNames = ['Carlos', 'María', 'Juan', 'Ana', 'Luis', 'Laura', 'José', 'Carmen', 'Javier', 'Sofía', 'Miguel', 'Elena', 'Pedro', 'Isabel', 'David', 'Patricia', 'Alejandro', 'Rosa', 'Sergio', 'Teresa'];
+            const lastNames = ['García', 'Rodríguez', 'López', 'Martínez', 'Sánchez', 'Pérez', 'González', 'Fernández', 'Ruiz', 'Díaz', 'Moreno', 'Álvarez', 'Romero', 'Alonso', 'Gutiérrez', 'Navarro', 'Torres', 'Domínguez', 'Vázquez', 'Ramos'];
+            const depts = ['Dirección', 'Finanzas', 'RRHH', 'Tecnología', 'Operaciones', 'Ventas', 'Marketing', 'Legal', 'I+D'];
+            
+            const data = [];
+            const totalEmployees = 500;
+            const managerCount = 45;
+            
+            // Generar managers primero
+            const managers = [];
+            for (let i = 1; i <= managerCount; i++) {
+                const dept = depts[Math.floor(Math.random() * depts.length)];
+                
+                const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+                const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@empresa.com`;
+                
+                const hireYear = 2010 + Math.floor(Math.random() * 10);
+                const hireMonth = Math.floor(Math.random() * 12);
+                const hireDay = Math.floor(Math.random() * 28) + 1;
+                const hireDate = new Date(hireYear, hireMonth, hireDay);
+                
+                const birthYear = 1970 + Math.floor(Math.random() * 15);
+                const birthMonth = Math.floor(Math.random() * 12);
+                const birthDay = Math.floor(Math.random() * 28) + 1;
+                const birthDate = new Date(birthYear, birthMonth, birthDay);
+                
+                // Datos de negocio
+                const salary = 50000 + Math.floor(Math.random() * 100000);
+                const monthlyBilling = salary * (2.5 + Math.random() * 3);
+                const monthlyCost = salary * 1.3;
+                const workloadHours = 160 + Math.floor(Math.random() * 40);
+                const performanceScore = 70 + Math.floor(Math.random() * 30);
+                const starPotential = performanceScore > 85 && (monthlyBilling / salary) > 3 ? 'S' : 'N';
+                
+                managers.push({
+                    identifier: `MGR${String(i).padStart(3, '0')}`,
+                    full_name: `${firstName} ${lastName}`,
+                    email: email,
+                    department: dept,
+                    position: ['Director', 'Gerente', 'Jefe'][Math.floor(Math.random() * 3)] + ' ' + dept,
+                    manager_id: null,
+                    hire_date: hireDate,
+                    birth_date: birthDate,
+                    gender: Math.random() > 0.5 ? 'M' : 'F',
+                    salary: salary,
+                    monthly_billing: monthlyBilling,
+                    monthly_cost: monthlyCost,
+                    workload_hours: workloadHours,
+                    performance_score: performanceScore,
+                    star_potential: starPotential,
+                    status: 'activo'
+                });
+            }
+            
+            // Generar empleados con inconsistencias INTENCIONALES
+            for (let i = 1; i <= totalEmployees - managerCount; i++) {
+                const dept = depts[Math.floor(Math.random() * depts.length)];
+                
+                const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+                const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+                
+                // === INCONSISTENCIAS CONTROLADAS ===
+                const randomValue = Math.random();
+                
+                let email;
+                if (randomValue < 0.05) {
+                    email = '';
+                } else if (randomValue < 0.1) {
+                    email = `${firstName.toLowerCase()}${lastName.toLowerCase()}empresa.com`;
+                } else if (randomValue < 0.15) {
+                    email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}`;
+                } else {
+                    email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@empresa.com`;
+                }
+                
+                let managerId;
+                const randomManager = Math.random();
+                if (randomManager < 0.1) {
+                    managerId = 'MGR999';
+                } else {
+                    const deptManagers = managers.filter(m => m.department === dept);
+                    const manager = deptManagers.length > 0 ? deptManagers[Math.floor(Math.random() * deptManagers.length)] : managers[Math.floor(Math.random() * managers.length)];
+                    managerId = manager?.identifier || null;
+                }
+                
+                const hireYear = 2015 + Math.floor(Math.random() * 8);
+                const hireMonth = Math.floor(Math.random() * 12);
+                const hireDay = Math.floor(Math.random() * 28) + 1;
+                const hireDate = new Date(hireYear, hireMonth, hireDay);
+                
+                const birthYear = 1980 + Math.floor(Math.random() * 20);
+                const birthMonth = Math.floor(Math.random() * 12);
+                const birthDay = Math.floor(Math.random() * 28) + 1;
+                const birthDate = new Date(birthYear, birthMonth, birthDay);
+                
+                let salary;
+                const randomSalary = Math.random();
+                if (randomSalary < 0.04) {
+                    salary = 0;
+                } else if (randomSalary < 0.08) {
+                    salary = -15000;
+                } else {
+                    salary = 25000 + Math.floor(Math.random() * 50000);
+                }
+                
+                let monthlyBilling;
+                if (Math.random() < 0.06) {
+                    monthlyBilling = -10000;
+                } else {
+                    monthlyBilling = salary * (1.5 + Math.random() * 3);
+                }
+                
+                let workloadHours;
+                const randomWorkload = Math.random();
+                if (randomWorkload < 0.03) {
+                    workloadHours = -20;
+                } else if (randomWorkload < 0.07) {
+                    workloadHours = 800;
+                } else {
+                    workloadHours = 160 + Math.floor(Math.random() * 60);
+                }
+                
+                let performanceScore;
+                const randomPerformance = Math.random();
+                if (randomPerformance < 0.02) {
+                    performanceScore = -10;
+                } else if (randomPerformance < 0.05) {
+                    performanceScore = 150;
+                } else {
+                    performanceScore = 50 + Math.floor(Math.random() * 50);
+                }
+                
+                let starPotential;
+                if (Math.random() < 0.03) {
+                    starPotential = 'X';
+                } else {
+                    starPotential = (performanceScore > 85 && (monthlyBilling / Math.max(salary, 1)) > 2.5) ? 'S' : 'N';
+                }
+                
+                let finalHireDate = hireDate;
+                let finalBirthDate = birthDate;
+                if (Math.random() < 0.02) {
+                    finalHireDate = new Date(2030, 1, 1);
+                }
+                if (Math.random() < 0.02) {
+                    finalBirthDate = new Date(1900, 1, 1);
+                }
+                
+                let status;
+                const randomStatus = Math.random();
+                if (randomStatus < 0.02) {
+                    status = 'inactivo';
+                } else if (randomStatus < 0.04) {
+                    status = '';
+                } else {
+                    status = Math.random() < 0.1 ? 'baja' : 'activo';
+                }
+                
+                let identifier = `EMP${String(i + managerCount).padStart(5, '0')}`;
+                
+                if (i === 50) {
+                    identifier = 'EMP00001';
+                }
+                
+                let fullName;
+                if (Math.random() < 0.03) {
+                    fullName = '';
+                } else {
+                    fullName = `${firstName} ${lastName}`;
+                }
+                
+                const monthlyCost = salary * 1.3;
+                
+                data.push({
+                    identifier: identifier,
+                    full_name: fullName,
+                    email: email,
+                    department: dept,
+                    position: ['Analista', 'Especialista', 'Coordinador', 'Asistente'][Math.floor(Math.random() * 4)],
+                    manager_id: managerId,
+                    hire_date: finalHireDate,
+                    birth_date: finalBirthDate,
+                    gender: Math.random() > 0.5 ? 'M' : 'F',
+                    salary: salary,
+                    monthly_billing: monthlyBilling,
+                    monthly_cost: monthlyCost,
+                    workload_hours: workloadHours,
+                    performance_score: performanceScore,
+                    star_potential: starPotential,
+                    status: status
+                });
+            }
+            
+            // Añadir casos extremos
+            data.push({
+                identifier: '',
+                full_name: 'Empleado Sin ID',
+                email: 'sin.id@empresa.com',
+                department: 'Tecnología',
+                position: 'Analista',
+                manager_id: 'MGR001',
+                hire_date: new Date(2020, 1, 1),
+                birth_date: new Date(1990, 1, 1),
+                gender: 'M',
+                salary: 35000,
+                monthly_billing: 80000,
+                monthly_cost: 45500,
+                workload_hours: 160,
+                performance_score: 75,
+                star_potential: 'N',
+                status: 'activo'
+            });
+            
+            data.push({
+                identifier: 'EMP99999',
+                full_name: 'Email Malo',
+                email: 'emailtotalmenteinvalido',
+                department: 'Marketing',
+                position: 'Especialista',
+                manager_id: 'MGR005',
+                hire_date: new Date(2019, 3, 15),
+                birth_date: new Date(1988, 5, 20),
+                gender: 'F',
+                salary: 42000,
+                monthly_billing: 95000,
+                monthly_cost: 54600,
+                workload_hours: 170,
+                performance_score: 82,
+                star_potential: 'N',
+                status: 'activo'
+            });
+            
+            data.push({
+                identifier: 'EMP88888',
+                full_name: 'Auto Manager',
+                email: 'auto.manager@empresa.com',
+                department: 'RRHH',
+                position: 'Coordinador',
+                manager_id: 'EMP88888',
+                hire_date: new Date(2018, 6, 10),
+                birth_date: new Date(1985, 8, 12),
+                gender: 'M',
+                salary: 48000,
+                monthly_billing: 110000,
+                monthly_cost: 62400,
+                workload_hours: 165,
+                performance_score: 88,
+                star_potential: 'N',
+                status: 'activo'
+            });
+            
+            data.push({
+                identifier: 'EMP77777',
+                full_name: 'Todo Inconsistente',
+                email: 'todo.inconsistente@empresa.com',
+                department: 'Operaciones',
+                position: 'Operador',
+                manager_id: 'MGR010',
+                hire_date: new Date(2022, 2, 5),
+                birth_date: new Date(1995, 4, 18),
+                gender: 'M',
+                salary: -5000,
+                monthly_billing: 0,
+                monthly_cost: 1000000,
+                workload_hours: -40,
+                performance_score: 200,
+                star_potential: 'S',
+                status: 'activo'
+            });
+            
+            data.push({
+                identifier: 'EMP66555',
+                full_name: 'Nacido en Futuro',
+                email: 'futuro@empresa.com',
+                department: 'I+D',
+                position: 'Científico',
+                manager_id: 'MGR015',
+                hire_date: new Date(2020, 1, 1),
+                birth_date: new Date(2030, 1, 1),
+                gender: 'M',
+                salary: 60000,
+                monthly_billing: 145000,
+                monthly_cost: 78000,
+                workload_hours: 170,
+                performance_score: 95,
+                star_potential: 'S',
+                status: 'activo'
+            });
+            
+            data.push({
+                identifier: 'EMP66444',
+                full_name: 'Contratado Antes de Nacer',
+                email: 'paradoja.temporal@empresa.com',
+                department: 'Legal',
+                position: 'Abogado',
+                manager_id: 'MGR012',
+                hire_date: new Date(2000, 1, 1),
+                birth_date: new Date(2005, 1, 1),
+                gender: 'F',
+                salary: 55000,
+                monthly_billing: 130000,
+                monthly_cost: 71500,
+                workload_hours: 168,
+                performance_score: 90,
+                star_potential: 'S',
+                status: 'activo'
+            });
+            
+            return [...managers, ...data];
+        }
+        
+        // ============================================
+        // PROCESAR DATOS Y DETECTAR INCONSISTENCIAS
+        // ============================================
+        
+        function processData(data) {
+            employees = data;
+            inconsistencies = [];
+            
+            // Validar cada empleado
+            employees.forEach((emp, index) => {
+                if (!emp.identifier) {
+                    inconsistencies.push({ type: 'critical', field: 'identifier', message: 'ID vacío', identifier: emp.identifier, name: emp.full_name, department: emp.department, value: '' });
+                }
+                if (!emp.email || emp.email.trim() === '') {
+                    inconsistencies.push({ type: 'warning', field: 'email', message: 'Email vacío', identifier: emp.identifier, name: emp.full_name, department: emp.department, value: '' });
+                } else if (!emp.email.includes('@') || !emp.email.includes('.')) {
+                    inconsistencies.push({ type: 'critical', field: 'email', message: 'Email con formato inválido', identifier: emp.identifier, name: emp.full_name, department: emp.department, value: emp.email });
+                }
+                
+                if (emp.manager_id && emp.manager_id !== '') {
+                    const managerExists = employees.some(e => e.identifier === emp.manager_id);
+                    if (!managerExists) {
+                        inconsistencies.push({ type: 'critical', field: 'manager_id', message: 'Manager no existe en la base', identifier: emp.identifier, name: emp.full_name, department: emp.department, value: emp.manager_id });
+                    }
+                }
+                
+                if (emp.salary <= 0) {
+                    inconsistencies.push({ type: 'critical', field: 'salary', message: 'Salario inválido (≤ 0)', identifier: emp.identifier, name: emp.full_name, department: emp.department, value: emp.salary });
+                }
+                
+                if (emp.monthly_billing && emp.monthly_billing < 0) {
+                    inconsistencies.push({ type: 'warning', field: 'monthly_billing', message: 'Facturación negativa', identifier: emp.identifier, name: emp.full_name, department: emp.department, value: emp.monthly_billing });
+                }
+                
+                if (emp.workload_hours && (emp.workload_hours < 0 || emp.workload_hours > 720)) {
+                    inconsistencies.push({ type: 'warning', field: 'workload_hours', message: 'Horas de carga fuera de rango', identifier: emp.identifier, name: emp.full_name, department: emp.department, value: emp.workload_hours });
+                }
+                
+                if (emp.performance_score < 0 || emp.performance_score > 100) {
+                    inconsistencies.push({ type: 'warning', field: 'performance_score', message: 'Rendimiento fuera de rango (0-100)', identifier: emp.identifier, name: emp.full_name, department: emp.department, value: emp.performance_score });
+                }
+            });
+            
+            // Actualizar toda la UI
+            updateInconsistenciesUI();
+            updateAllKPIs();
+            updateCharts();
+            updateNewCharts(); // <-- AHORA LLAMAMOS A ESTA FUNCIÓN
+            updateStarsTable();
+            updateFilters();
+            updatePersonSelector();
+            updateEditableTable();
+            updateHealthIndicators();
+            updateRadar(); // Actualizar radar si hay persona seleccionada
+        }
+        
+        // ============================================
+        // ACTUALIZAR TODOS LOS KPIS (con incremento)
+        // ============================================
+        
+        function updateAllKPIs() {
+            const currentData = getAdjustedEmployees();
+            if (!currentData || currentData.length === 0) {
+                resetKPIs();
+                return;
+            }
+            
+            const totalBilling = currentData.reduce((sum, e) => sum + (e.monthly_billing || 0), 0);
+            const totalSalary = currentData.reduce((sum, e) => sum + (e.salary || 0), 0);
+            const totalCost = currentData.reduce((sum, e) => sum + (e.monthly_cost || e.salary * 1.3 || 0), 0);
+            const totalWorkload = currentData.reduce((sum, e) => sum + (e.workload_hours || 160), 0);
+            
+            const avgBilling = currentData.length > 0 ? totalBilling / currentData.length : 0;
+            const avgSalary = currentData.length > 0 ? totalSalary / currentData.length : 0;
+            const avgWorkload = currentData.length > 0 ? totalWorkload / currentData.length : 0;
+            
+            const payrollPercentage = totalBilling > 0 ? (totalSalary / totalBilling) * 100 : 0;
+            const operatingMargin = totalBilling > 0 ? ((totalBilling - totalCost) / totalBilling) * 100 : 0;
+            const profitPerPerson = currentData.length > 0 ? (totalBilling - totalCost) / currentData.length : 0;
+            
+            const activeEmployees = currentData.filter(e => e.status === 'activo' || !e.status);
+            const inactiveEmployees = currentData.filter(e => e.status === 'baja');
+            
+            const turnoverRate = currentData.length > 0 ? (inactiveEmployees.length / currentData.length) * 100 : 0;
+            
+            const validPerformances = currentData.filter(e => e.performance_score && e.performance_score > 0);
+            const avgPerformance = validPerformances.length > 0 
+                ? validPerformances.reduce((sum, e) => sum + (e.performance_score || 0), 0) / validPerformances.length 
+                : 0;
+            
+            const topPerformers = currentData.filter(e => e.star_potential === 'S' || (e.performance_score && e.performance_score >= 85)).length;
+            
+            kpiTotalBilling.textContent = formatCurrency(totalBilling);
+            kpiAvgBilling.textContent = formatCurrency(avgBilling) + ' por persona';
+            kpiTotalSalary.textContent = formatCurrency(totalSalary);
+            kpiAvgSalary.textContent = formatCurrency(avgSalary) + ' promedio';
+            kpiPayrollPercentage.textContent = payrollPercentage.toFixed(1) + '%';
+            kpiPayrollVsBilling.textContent = payrollPercentage < 30 ? 'Saludable' : payrollPercentage < 50 ? 'Alerta' : 'Crítico';
+            kpiOperatingMargin.textContent = operatingMargin.toFixed(1) + '%';
+            kpiProfitPerPerson.textContent = formatCurrency(profitPerPerson) + ' por persona';
+            
+            kpiTotalEmployees.textContent = currentData.length;
+            kpiActiveEmployees.textContent = activeEmployees.length + ' activos';
+            kpiAvgWorkload.textContent = Math.round(avgWorkload) + 'h';
+            kpiTotalWorkload.textContent = Math.round(totalWorkload) + 'h totales';
+            kpiTurnover.textContent = turnoverRate.toFixed(1) + '%';
+            kpiTurnoverCount.textContent = inactiveEmployees.length + ' bajas';
+            kpiAvgPerformance.textContent = avgPerformance.toFixed(1) + '%';
+            kpiTopPerformers.textContent = topPerformers + ' estrellas';
+            
+            exportExcelBtn.disabled = false;
+            exportJSONBtn.disabled = false;
+            exportBusinessBtn.disabled = false;
+        }
+        
+        function resetKPIs() {
+            kpiTotalBilling.textContent = '$0';
+            kpiAvgBilling.textContent = '$0 por persona';
+            kpiTotalSalary.textContent = '$0';
+            kpiAvgSalary.textContent = '$0 promedio';
+            kpiPayrollPercentage.textContent = '0%';
+            kpiPayrollVsBilling.textContent = 'Ratio salud';
+            kpiOperatingMargin.textContent = '0%';
+            kpiProfitPerPerson.textContent = '$0 por persona';
+            
+            kpiTotalEmployees.textContent = '0';
+            kpiActiveEmployees.textContent = '0 activos';
+            kpiAvgWorkload.textContent = '0h';
+            kpiTotalWorkload.textContent = '0h totales';
+            kpiTurnover.textContent = '0%';
+            kpiTurnoverCount.textContent = '0 bajas';
+            kpiAvgPerformance.textContent = '0%';
+            kpiTopPerformers.textContent = '0 estrellas';
+            
+            exportExcelBtn.disabled = true;
+            exportJSONBtn.disabled = true;
+            exportBusinessBtn.disabled = true;
+        }
+        
+        // ============================================
+        // NUEVAS FUNCIONES
+        // ============================================
+        
+        function updateFilters() {
+            const depts = [...new Set(employees.map(e => e.department).filter(Boolean))];
+            deptFilter.innerHTML = '<option value="all">Todos los departamentos</option>' + 
+                depts.map(d => `<option value="${d}">${d}</option>`).join('');
+        }
+        
+        function updatePersonSelector() {
+            const currentData = getAdjustedEmployees();
+            const options = currentData
+                .filter(e => e.identifier && e.full_name)
+                .map(e => `<option value="${e.identifier}">${e.full_name} (${e.department})</option>`)
+                .join('');
+            personSelector.innerHTML = '<option value="">Seleccionar persona para comparar</option>' + options;
+        }
+        
+        function updateEditableTable() {
+            const currentData = getAdjustedEmployees();
+            const filtered = currentData.filter(emp => {
+                if (currentFilters.status !== 'all' && emp.status !== currentFilters.status) return false;
+                if (currentFilters.department !== 'all' && emp.department !== currentFilters.department) return false;
+                if (currentFilters.search) {
+                    const searchLower = currentFilters.search.toLowerCase();
+                    return (emp.full_name && emp.full_name.toLowerCase().includes(searchLower)) ||
+                           (emp.identifier && emp.identifier.toLowerCase().includes(searchLower)) ||
+                           (emp.email && emp.email.toLowerCase().includes(searchLower)) ||
+                           (emp.department && emp.department.toLowerCase().includes(searchLower));
+                }
+                return true;
+            }).slice(0, 50); // Limitamos a 50 para rendimiento
+            
+            let html = '';
+            filtered.forEach(emp => {
+                const roi = emp.salary > 0 ? (emp.monthly_billing / emp.salary).toFixed(1) : 'N/A';
+                html += `<tr>
+                    <td contenteditable="true" data-field="identifier" data-id="${emp.identifier}">${emp.identifier || ''}</td>
+                    <td contenteditable="true" data-field="full_name" data-id="${emp.identifier}">${emp.full_name || ''}</td>
+                    <td contenteditable="true" data-field="department" data-id="${emp.identifier}">${emp.department || ''}</td>
+                    <td contenteditable="true" data-field="salary" data-id="${emp.identifier}">${emp.salary || 0}</td>
+                    <td contenteditable="true" data-field="monthly_billing" data-id="${emp.identifier}">${emp.monthly_billing || 0}</td>
+                    <td>${roi}</td>
+                    <td contenteditable="true" data-field="performance_score" data-id="${emp.identifier}">${emp.performance_score || 0}</td>
+                </tr>`;
+            });
+            tableBody.innerHTML = html;
+            
+            // Hacer celdas editables
+            document.querySelectorAll('#liveTable td[contenteditable="true"]').forEach(cell => {
+                cell.removeEventListener('blur', handleCellEdit);
+                cell.addEventListener('blur', handleCellEdit);
+            });
+        }
+
+        function handleCellEdit(e) {
+            const cell = e.target;
+            const field = cell.dataset.field;
+            const id = cell.dataset.id;
+            const newValue = cell.textContent.trim();
+            const employee = employees.find(emp => emp.identifier === id);
+            if (employee) {
+                // Convertir a número si es campo numérico
+                if (['salary', 'monthly_billing', 'performance_score'].includes(field)) {
+                    employee[field] = parseFloat(newValue) || 0;
+                } else {
+                    employee[field] = newValue;
+                }
+                // Re-procesar datos para actualizar todo
+                processData(employees);
+            }
+        }
+        
+        function updateNewCharts() {
+            const currentData = getAdjustedEmployees();
+            if (!currentData.length) return;
+            
+            // Destruir charts nuevos si existen
+            if (charts.scatter) charts.scatter.destroy();
+            if (charts.trend) charts.trend.destroy();
+            if (charts.genderGap) charts.genderGap.destroy();
+            if (charts.age) charts.age.destroy();
+            
+            // Scatter: Salario vs ROI
+            const scatterData = currentData.map(e => ({
+                x: e.salary,
+                y: e.salary > 0 ? e.monthly_billing / e.salary : 0,
+                r: Math.sqrt(e.monthly_billing) / 100 || 5
+            })).filter(d => d.x > 0 && d.y > 0);
+            
+            charts.scatter = new Chart(document.getElementById('scatterChart'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'ROI vs Salario',
+                        data: scatterData,
+                        backgroundColor: '#3b82f6',
+                        pointRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'linear', position: 'bottom', title: { display: true, text: 'Salario', color: '#94a3b8' } },
+                        y: { title: { display: true, text: 'ROI', color: '#94a3b8' } }
+                    }
+                }
+            });
+            
+            // Tendencia contrataciones por año
+            const years = {};
+            currentData.forEach(e => {
+                if (e.hire_date) {
+                    const year = new Date(e.hire_date).getFullYear();
+                    if (year > 2000) years[year] = (years[year] || 0) + 1;
+                }
+            });
+            const sortedYears = Object.keys(years).sort();
+            
+            charts.trend = new Chart(document.getElementById('trendChart'), {
+                type: 'line',
+                data: {
+                    labels: sortedYears,
+                    datasets: [{
+                        label: 'Contrataciones',
+                        data: sortedYears.map(y => years[y]),
+                        borderColor: '#10b981',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+            
+            // Brecha salarial por género
+            const genderSalary = { M: [], F: [] };
+            currentData.forEach(e => {
+                if (e.gender === 'M' || e.gender === 'F') genderSalary[e.gender].push(e.salary || 0);
+            });
+            const avgM = genderSalary.M.length ? genderSalary.M.reduce((a,b)=>a+b,0)/genderSalary.M.length : 0;
+            const avgF = genderSalary.F.length ? genderSalary.F.reduce((a,b)=>a+b,0)/genderSalary.F.length : 0;
+            
+            charts.genderGap = new Chart(document.getElementById('genderGapChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Masculino', 'Femenino'],
+                    datasets: [{
+                        data: [avgM, avgF],
+                        backgroundColor: ['#3b82f6', '#ec4899']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+            
+            // Distribución de edades
+            const ages = currentData.map(e => calculateAge(e.birth_date)).filter(a => a && a > 0 && a < 100);
+            const ageRanges = {'18-25':0, '26-35':0, '36-45':0, '46-55':0, '56+':0};
+            ages.forEach(age => {
+                if (age <= 25) ageRanges['18-25']++;
+                else if (age <= 35) ageRanges['26-35']++;
+                else if (age <= 45) ageRanges['36-45']++;
+                else if (age <= 55) ageRanges['46-55']++;
+                else ageRanges['56+']++;
+            });
+            
+            charts.age = new Chart(document.getElementById('ageChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(ageRanges),
+                    datasets: [{
+                        data: Object.values(ageRanges),
+                        backgroundColor: '#f59e0b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        function updateHealthIndicators() {
+            const currentData = getAdjustedEmployees();
+            const saludables = currentData.filter(e => e.monthly_billing / e.salary > 3).length;
+            const alerta = currentData.filter(e => e.monthly_billing / e.salary >= 1.5 && e.monthly_billing / e.salary <= 3).length;
+            const critico = currentData.filter(e => e.monthly_billing / e.salary < 1.5).length;
+            
+            healthRoiCount.textContent = saludables;
+            healthAlertCount.textContent = alerta;
+            healthCriticalCount.textContent = critico;
+            
+            const avgM = currentData.filter(e=>e.gender==='M').reduce((s,e)=>s+(e.salary||0),0) / (currentData.filter(e=>e.gender==='M').length||1);
+            const avgF = currentData.filter(e=>e.gender==='F').reduce((s,e)=>s+(e.salary||0),0) / (currentData.filter(e=>e.gender==='F').length||1);
+            const gap = avgM > 0 ? ((avgM - avgF) / avgM * 100).toFixed(1) : 0;
+            genderGapPercent.textContent = gap + '%';
+        }
+        
+        function updateRadar() {
+            if (!selectedPersonId) {
+                if (charts.radar) charts.radar.destroy();
+                return;
+            }
+            const currentData = getAdjustedEmployees();
+            const person = currentData.find(e => e.identifier === selectedPersonId);
+            if (!person) return;
+            
+            const deptAvg = currentData.filter(e => e.department === person.department && e.identifier !== person.identifier);
+            const avgSalary = deptAvg.length ? deptAvg.reduce((s,e)=>s+(e.salary||0),0)/deptAvg.length : person.salary;
+            const avgBilling = deptAvg.length ? deptAvg.reduce((s,e)=>s+(e.monthly_billing||0),0)/deptAvg.length : person.monthly_billing;
+            const avgPerformance = deptAvg.length ? deptAvg.reduce((s,e)=>s+(e.performance_score||0),0)/deptAvg.length : person.performance_score;
+            const avgWorkload = deptAvg.length ? deptAvg.reduce((s,e)=>s+(e.workload_hours||0),0)/deptAvg.length : person.workload_hours;
+            const avgRoi = avgSalary > 0 ? (avgBilling / avgSalary) : 1;
+            const personRoi = person.salary > 0 ? (person.monthly_billing / person.salary) : 1;
+            
+            // Perfil
+            personProfile.innerHTML = `
+                <p><span class="text-slate-400">Nombre:</span> ${person.full_name}</p>
+                <p><span class="text-slate-400">Depto:</span> ${person.department}</p>
+                <p><span class="text-slate-400">Salario:</span> ${formatCurrency(person.salary)}</p>
+                <p><span class="text-slate-400">ROI:</span> ${personRoi.toFixed(1)}x</p>
+                <p><span class="text-slate-400">vs Depto:</span> ${(personRoi / avgRoi * 100).toFixed(0)}%</p>
+            `;
+            
+            if (charts.radar) charts.radar.destroy();
+            charts.radar = new Chart(document.getElementById('radarChart'), {
+                type: 'radar',
+                data: {
+                    labels: ['Salario', 'Facturación', 'Rendimiento', 'Carga', 'ROI'],
+                    datasets: [
+                        { label: person.full_name, data: [person.salary/1000, person.monthly_billing/1000, person.performance_score, person.workload_hours, personRoi*10], borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.2)' },
+                        { label: `Prom. ${person.department}`, data: [avgSalary/1000, avgBilling/1000, avgPerformance, avgWorkload, avgRoi*10], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.2)' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+        
+        function updateStarsTable() {
+            const currentData = getAdjustedEmployees();
+            const stars = currentData
+                .filter(e => e.star_potential === 'S' || (e.performance_score && e.performance_score >= 85))
+                .map(e => {
+                    const roi = e.monthly_billing / e.salary;
+                    const suggestedIncrease = roi > 3 ? e.salary * 0.15 : roi > 2.5 ? e.salary * 0.1 : e.salary * 0.05;
+                    return { ...e, roi, suggestedIncrease };
+                })
+                .sort((a, b) => b.roi - a.roi)
+                .slice(0, 10);
+            
+            if (stars.length === 0) {
+                starsTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-600 py-8">No hay talento estrella identificado</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            stars.forEach(star => {
+                const roiClass = star.roi > 3 ? 'text-emerald-400' : star.roi > 2 ? 'text-amber-400' : 'text-slate-400';
+                html += `
+                    <tr class="border-b border-slate-800 hover:bg-slate-800/50">
+                        <td class="py-3 text-white">${star.full_name}</td>
+                        <td class="py-3 text-slate-400">${star.department}</td>
+                        <td class="py-3 text-right ${hideSensitiveToggle.checked ? 'text-slate-500' : 'text-white'}">
+                            ${hideSensitiveToggle.checked ? '***' : formatCurrency(star.salary)}
+                        </td>
+                        <td class="py-3 text-right ${hideSensitiveToggle.checked ? 'text-slate-500' : 'text-emerald-400'}">
+                            ${hideSensitiveToggle.checked ? '***' : formatCurrency(star.monthly_billing)}
+                        </td>
+                        <td class="py-3 text-right ${roiClass} font-bold">
+                            ${star.roi.toFixed(1)}x
+                        </td>
+                        <td class="py-3 text-right">
+                            <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs">
+                                +${formatCurrency(star.suggestedIncrease)}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+            starsTableBody.innerHTML = html;
+        }
+        
+        // ============================================
+        // GRÁFICOS ORIGINALES (ACTUALIZADOS)
+        // ============================================
+        
+        function updateCharts() {
+            const currentData = getAdjustedEmployees();
+            if (!currentData || currentData.length === 0) {
+                // Destruir gráficos originales si existen
+                if (charts.gender) charts.gender.destroy();
+                if (charts.dept) charts.dept.destroy();
+                if (charts.billingVsSalary) charts.billingVsSalary.destroy();
+                if (charts.salary) charts.salary.destroy();
+                return;
+            }
+            
+            // Destruir gráficos originales
+            if (charts.gender) charts.gender.destroy();
+            if (charts.dept) charts.dept.destroy();
+            if (charts.billingVsSalary) charts.billingVsSalary.destroy();
+            if (charts.salary) charts.salary.destroy();
+            
+            // Género
+            const genderCount = { M: 0, F: 0, Otro: 0 };
+            currentData.forEach(e => {
+                if (e.gender === 'M') genderCount.M++;
+                else if (e.gender === 'F') genderCount.F++;
+                else genderCount.Otro++;
+            });
+            
+            charts.gender = new Chart(document.getElementById('genderChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Masculino', 'Femenino', 'Otro'],
+                    datasets: [{
+                        data: [genderCount.M, genderCount.F, genderCount.Otro],
+                        backgroundColor: ['#3b82f6', '#ec4899', '#94a3b8'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8' } }
+                    }
+                }
+            });
+            
+            // Departamentos
+            const deptCount = {};
+            currentData.forEach(e => {
+                const dept = e.department || 'Sin departamento';
+                deptCount[dept] = (deptCount[dept] || 0) + 1;
+            });
+            
+            const sortedDepts = Object.entries(deptCount)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+            
+            charts.dept = new Chart(document.getElementById('deptChart'), {
+                type: 'bar',
+                data: {
+                    labels: sortedDepts.map(d => d[0]),
+                    datasets: [{
+                        label: 'Empleados',
+                        data: sortedDepts.map(d => d[1]),
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { ticks: { color: '#94a3b8', maxRotation: 45 } }
+                    }
+                }
+            });
+            
+            // Facturación vs Salario por departamento
+            const deptBilling = {};
+            const deptSalary = {};
+            
+            currentData.forEach(e => {
+                const dept = e.department || 'Sin departamento';
+                deptBilling[dept] = (deptBilling[dept] || 0) + (e.monthly_billing || 0);
+                deptSalary[dept] = (deptSalary[dept] || 0) + (e.salary || 0);
+            });
+            
+            const deptNames = Object.keys(deptBilling).slice(0, 8);
+            
+            charts.billingVsSalary = new Chart(document.getElementById('billingVsSalaryChart'), {
+                type: 'bar',
+                data: {
+                    labels: deptNames,
+                    datasets: [
+                        {
+                            label: 'Facturación',
+                            data: deptNames.map(d => deptBilling[d] || 0),
+                            backgroundColor: '#10b981',
+                            borderRadius: 8
+                        },
+                        {
+                            label: 'Salarios',
+                            data: deptNames.map(d => deptSalary[d] || 0),
+                            backgroundColor: '#f59e0b',
+                            borderRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8' } }
+                    },
+                    scales: {
+                        y: { 
+                            grid: { color: '#334155' }, 
+                            ticks: { 
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    if (hideSensitiveToggle.checked) return '***';
+                                    return '$' + (value / 1000) + 'k';
+                                }
+                            } 
+                        },
+                        x: { ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+            
+            // Salarios por rango
+            const salaryRanges = {
+                '0-20k': 0, '20k-40k': 0, '40k-60k': 0, '60k-80k': 0, '80k-100k': 0, '100k+': 0
+            };
+            
+            currentData.forEach(e => {
+                const sal = e.salary || 0;
+                if (sal < 20000) salaryRanges['0-20k']++;
+                else if (sal < 40000) salaryRanges['20k-40k']++;
+                else if (sal < 60000) salaryRanges['40k-60k']++;
+                else if (sal < 80000) salaryRanges['60k-80k']++;
+                else if (sal < 100000) salaryRanges['80k-100k']++;
+                else salaryRanges['100k+']++;
+            });
+            
+            charts.salary = new Chart(document.getElementById('salaryChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(salaryRanges),
+                    datasets: [{
+                        data: Object.values(salaryRanges),
+                        backgroundColor: '#8b5cf6',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                        x: { ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+        
+        // ============================================
+        // ACTUALIZAR UI DE INCONSISTENCIAS
+        // ============================================
+        
+        function updateInconsistenciesUI() {
+            inconsistenciesCount.textContent = inconsistencies.length;
+            
+            if (inconsistencies.length === 0) {
+                inconsistenciesList.innerHTML = `
+                    <div class="text-center text-slate-600 py-8">
+                        <i class="fas fa-check-circle text-4xl mb-3 text-emerald-500/30"></i>
+                        <p class="text-sm">No hay inconsistencias detectadas</p>
+                    </div>
+                `;
+                downloadInconsistenciesBtn.disabled = true;
+                return;
+            }
+            
+            downloadInconsistenciesBtn.disabled = false;
+            
+            let html = '';
+            inconsistencies.slice(0, 10).forEach(inc => {
+                const badgeClass = inc.type === 'critical' ? 'badge-critical' : inc.type === 'warning' ? 'badge-warning' : 'badge-info';
+                html += `
+                    <div class="p-3 bg-slate-800/50 rounded-xl inconsistency-row">
+                        <div class="flex items-start gap-2">
+                            <span class="${badgeClass} text-[8px] px-2 py-1">${inc.type}</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-semibold text-white truncate">${inc.name || 'N/A'}</p>
+                                <p class="text-[10px] text-slate-500">${inc.identifier}</p>
+                                <p class="text-xs text-slate-400 mt-1">${inc.message}</p>
+                                <p class="text-[10px] text-slate-600 mt-1">${inc.field}: ${hideSensitiveToggle.checked ? '***' : inc.value}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            if (inconsistencies.length > 10) {
+                html += `<p class="text-center text-xs text-slate-600 mt-2">... y ${inconsistencies.length - 10} más</p>`;
+            }
+            
+            inconsistenciesList.innerHTML = html;
+        }
+        
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        
+        // Drop zone
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-blue-500');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleFile(e.target.files[0]);
+        });
+        
+        function handleFile(file) {
+            isDemoMode = false;
+            simulationBadge.classList.add('hidden');
+            
+            fileName.textContent = `Archivo: ${file.name}`;
+            fileName.classList.remove('hidden');
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    const mappedData = jsonData.map(row => ({
+                        identifier: row.identifier || row.id || '',
+                        full_name: row.full_name || row.name || `${row.firstname || ''} ${row.lastname || ''}`,
+                        email: row.email || '',
+                        department: row.department || row.dept || row.area || '',
+                        position: row.position || row.cargo || '',
+                        manager_id: row.manager_id || row.manager || '',
+                        hire_date: parseDate(row.hire_date || row.fecha_ingreso),
+                        birth_date: parseDate(row.birth_date || row.fecha_nacimiento),
+                        gender: row.gender || '',
+                        salary: Number(row.salary || 0),
+                        monthly_billing: Number(row.monthly_billing || row.billing || 0),
+                        monthly_cost: Number(row.monthly_cost || row.cost || 0),
+                        workload_hours: Number(row.workload_hours || row.hours || 160),
+                        performance_score: Number(row.performance_score || row.performance || 80),
+                        star_potential: row.star_potential || 'N',
+                        status: row.status || 'activo'
+                    }));
+                    
+                    processData(mappedData);
+                    dataStatus.innerHTML = '<i class="fas fa-check-circle text-emerald-400"></i> Datos cargados';
+                    analyzeBtn.disabled = false;
+                    
+                } catch (error) {
+                    console.error(error);
+                    alert('Error al procesar el archivo');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // Simulación
+        simulateBtn.addEventListener('click', () => {
+            const simulatedData = generateSimulationData();
+            processData(simulatedData);
+            fileName.textContent = 'Archivo: simulación demo (500 empleados con inconsistencias)';
+            fileName.classList.remove('hidden');
+            dataStatus.innerHTML = '<i class="fas fa-flask text-purple-400"></i> Modo demostración con inconsistencias';
+            analyzeBtn.disabled = false;
+        });
+        
+        // Toggle datos sensibles
+        hideSensitiveToggle.addEventListener('change', () => {
+            updateAllKPIs();
+            updateStarsTable();
+            updateInconsistenciesUI();
+            updateCharts();
+            updateNewCharts();
+            updateRadar();
+            updateEditableTable();
+        });
+        
+        // Reset
+        resetBtn.addEventListener('click', () => {
+            employees = [];
+            inconsistencies = [];
+            isDemoMode = false;
+            simulationBadge.classList.add('hidden');
+            simulationIncrease = 0;
+            salaryIncreaseSlider.value = 0;
+            increaseValue.textContent = '0%';
+            updateInconsistenciesUI();
+            resetKPIs();
+            // Destruir todos los gráficos
+            Object.values(charts).forEach(chart => chart?.destroy());
+            charts = {}; // Reiniciar el objeto de charts
+            fileName.classList.add('hidden');
+            dataStatus.innerHTML = '<i class="fas fa-database"></i> Sin datos cargados';
+            analyzeBtn.disabled = true;
+            
+            personProfile.innerHTML = '<p class="text-slate-500">Selecciona una persona</p>';
+            starsTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-600 py-8">No hay datos de estrellas</td></tr>';
+            personSelector.innerHTML = '<option value="">Seleccionar persona para comparar</option>';
+            tableBody.innerHTML = '';
+            
+            // Resetear indicadores de salud
+            healthRoiCount.textContent = '0';
+            healthAlertCount.textContent = '0';
+            healthCriticalCount.textContent = '0';
+            genderGapPercent.textContent = '0%';
+        });
+        
+        // Toggle estructura
+        toggleStructureBtn.addEventListener('click', () => {
+            structureContent.classList.toggle('hidden');
+            structureChevron.classList.toggle('fa-chevron-down');
+            structureChevron.classList.toggle('fa-chevron-up');
+        });
+        
+        // Botón de ejemplo
+        exampleExcelBtn.addEventListener('click', () => {
+            const exampleData = [
+                { identifier: 'DIR001', full_name: 'Elena Vance', email: 'elena.vance@luxanalitica.com', department: 'Dirección', position: 'CEO', manager_id: '', hire_date: '10/02/2010', birth_date: '12/05/1975', gender: 'F', salary: 125000, monthly_billing: 450000, monthly_cost: 162500, workload_hours: 180, performance_score: 98, star_potential: 'S', status: 'activo' },
+                { identifier: 'TEC001', full_name: 'Ana Torres', email: 'ana.torres@luxanalitica.com', department: 'Tecnología', position: 'CTO', manager_id: 'DIR001', hire_date: '05/11/2011', birth_date: '17/07/1980', gender: 'F', salary: 98000, monthly_billing: 350000, monthly_cost: 127400, workload_hours: 175, performance_score: 96, star_potential: 'S', status: 'activo' }
+            ];
+            const ws = XLSX.utils.json_to_sheet(exampleData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Ejemplo');
+            XLSX.writeFile(wb, 'ejemplo_luxanalitica_business_people.xlsx');
+        });
+        
+        // Descargar plantilla
+        downloadTemplateBtn.addEventListener('click', () => {
+            const template = [
+                { identifier: 'EMP001', full_name: 'Juan Pérez', email: 'juan.perez@empresa.com', department: 'Tecnología', position: 'Desarrollador Sr', manager_id: 'MGR001', hire_date: '15/03/2018', birth_date: '12/05/1985', gender: 'M', salary: 45000, monthly_billing: 120000, monthly_cost: 58500, workload_hours: 168, performance_score: 92, star_potential: 'S', status: 'activo' }
+            ];
+            const ws = XLSX.utils.json_to_sheet(template);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
+            XLSX.writeFile(wb, 'plantilla_luxanalitica_business.xlsx');
+        });
+        
+        // Exportaciones
+        exportExcelBtn.addEventListener('click', () => {
+            const ws = XLSX.utils.json_to_sheet(employees);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Employees');
+            if (inconsistencies.length > 0) {
+                const wsInc = XLSX.utils.json_to_sheet(inconsistencies);
+                XLSX.utils.book_append_sheet(wb, wsInc, 'Inconsistencias');
+            }
+            XLSX.writeFile(wb, `luxanalitica_completo_${new Date().toISOString().slice(0,10)}.xlsx`);
+        });
+        
+        exportJSONBtn.addEventListener('click', () => {
+            const data = {
+                metadata: { exportDate: new Date().toISOString(), totalEmployees: employees.length, inconsistencies: inconsistencies.length, isDemo: isDemoMode },
+                employees: employees,
+                inconsistencies: inconsistencies
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `luxanalitica_analytics_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+        });
+        
+        exportBusinessBtn.addEventListener('click', () => {
+            const businessData = employees.map(e => ({
+                identifier: e.identifier,
+                full_name: e.full_name,
+                department: e.department,
+                salary: e.salary,
+                monthly_billing: e.monthly_billing,
+                monthly_cost: e.monthly_cost,
+                workload_hours: e.workload_hours,
+                performance_score: e.performance_score,
+                star_potential: e.star_potential,
+                roi: (e.monthly_billing / e.salary).toFixed(2),
+                margin: (((e.monthly_billing - e.monthly_cost) / e.monthly_billing) * 100).toFixed(1) + '%'
+            }));
+            const ws = XLSX.utils.json_to_sheet(businessData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Business KPIs');
+            XLSX.writeFile(wb, `luxanalitica_business_${new Date().toISOString().slice(0,10)}.xlsx`);
+        });
+        
+        downloadInconsistenciesBtn.addEventListener('click', () => {
+            const ws = XLSX.utils.json_to_sheet(inconsistencies);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Inconsistencias');
+            XLSX.writeFile(wb, `inconsistencias_${new Date().toISOString().slice(0,10)}.xlsx`);
+        });
+        
+        // NUEVOS EVENTOS
+        searchInput.addEventListener('input', (e) => {
+            currentFilters.search = e.target.value;
+            updateEditableTable();
+        });
+        
+        deptFilter.addEventListener('change', (e) => {
+            currentFilters.department = e.target.value;
+            updateEditableTable();
+        });
+        
+        document.querySelectorAll('.filter-pill').forEach(pill => {
+            pill.addEventListener('click', function() {
+                document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+                this.classList.add('active');
+                currentFilters.status = this.dataset.filter;
+                updateEditableTable();
+            });
+        });
+        
+        clearFiltersBtn.addEventListener('click', () => {
+            currentFilters = { department: 'all', status: 'all', search: '' };
+            searchInput.value = '';
+            deptFilter.value = 'all';
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            document.querySelector('[data-filter="all"]').classList.add('active');
+            updateEditableTable();
+        });
+        
+        salaryIncreaseSlider.addEventListener('input', (e) => {
+            simulationIncrease = parseInt(e.target.value);
+            increaseValue.textContent = simulationIncrease + '%';
+            updateAllKPIs();
+            updateCharts();
+            updateNewCharts();
+            updateStarsTable();
+            updateEditableTable();
+            updateRadar();
+            updateHealthIndicators();
+        });
+        
+        personSelector.addEventListener('change', (e) => {
+            selectedPersonId = e.target.value;
+            updateRadar();
+        });
+        
+        // Cargar simulación automática al inicio
+        setTimeout(() => {
+            const simulatedData = generateSimulationData();
+            processData(simulatedData);
+            fileName.textContent = 'Archivo: demostración automática (500 empleados con inconsistencias)';
+            fileName.classList.remove('hidden');
+            dataStatus.innerHTML = '<i class="fas fa-flask text-purple-400"></i> Modo demostración con inconsistencias';
+            analyzeBtn.disabled = false;
+        }, 500);
+    </script>
+</body>
+</html>
